@@ -6,7 +6,7 @@ import UpdateComponent from "@/components/UpdateComponent";
 import React, { useState } from 'react';
 import { AlertTriangle, Upload, Download } from 'lucide-react';
 
-export default function dashboardPage() {
+export default function DashboardPage() {
   const [selected, setSelected] = useState<"update" | "fetch">("update");
 
   return (
