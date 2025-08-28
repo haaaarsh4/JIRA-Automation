@@ -47,20 +47,20 @@ export async function POST(request: NextRequest) {
       username: process.env.JIRA_USERNAME!,
       password: process.env.JIRA_PASSWORD!,
       apiVersion: '2',
-      strictSSL: false, // set true if SSL cert is valid
+      strictSSL: false,
     });
 
     let successCount = 0;
     let failCount = 0;
 
-    // Skip header row (assume first row is header)
+    // Assuming first row is a header
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const ticketId = row[0]?.toString(); // column A = ticket key
-      const deadline = row[1]?.toString(); // column B = deadline
+      const updateValue = row[1]?.toString(); // column B = updateValue
 
-      if (!ticketId || !deadline) {
-        console.warn(`Skipping row ${i + 1}: missing ticketId or deadline`);
+      if (!ticketId || !updateValue) {
+        console.warn(`Skipping row ${i + 1}: missing ticketId or updateValue`);
         failCount++;
         continue;
       }
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
       try {
         await jira.updateIssue(ticketId, {
           fields: {
-            [jiraField]: deadline,
+            [jiraField]: updateValue,
           },
         });
-        console.log(`Updated ${ticketId} with ${jiraField}: ${deadline}`);
+        console.log(`Updated ${ticketId} with ${jiraField}: ${updateValue}`);
         successCount++;
       } catch (err) {
         console.error(`Failed to update ${ticketId}:`, err);
