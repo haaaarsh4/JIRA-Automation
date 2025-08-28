@@ -15,13 +15,13 @@ const UpdateComponent = () => {
 
   const jiraFields = [
     { value: "Grooming Deadline", label: "Grooming Deadline", field_id: "customfield_13602" },
-    { value: "Grooming Start Date (Project)", label: "Grooming Start Date (Project)", field_id: "customfield_13602" },
-    { value: "Grooming End Date (Project)", label: "Grooming End Date (Project)", field_id: "customfield_13602" },
-    { value: "Target Version", label: "Target Version", field_id: "customfield_13602" },
-    { value: "T-Shirt Size", label: "T-Shirt Size", field_id: "customfield_13602" },
-    { value: "BA Effort", label: "BA Effort", field_id: "customfield_13602" },
-    { value: "Dev Effort", label: "Dev Effort", field_id: "customfield_13602" },
-    { value: "QA Effort", label: "QA Effort", field_id: "customfield_13602" },
+    // { value: "Grooming Start Date (Project)", label: "Grooming Start Date (Project)", field_id: "customfield_13602" },
+    // { value: "Grooming End Date (Project)", label: "Grooming End Date (Project)", field_id: "customfield_13602" },
+    // { value: "Target Version", label: "Target Version", field_id: "customfield_13602" },
+    // { value: "T-Shirt Size", label: "T-Shirt Size", field_id: "customfield_13602" },
+    { value: "BA Effort", label: "BA Effort", field_id: "customfield_14902" },
+    { value: "Dev Effort", label: "Dev Effort", field_id: "customfield_14901" },
+    { value: "Integration Testing Effort:", label: "Integration Testing Effort:", field_id: "customfield_14904" },
   ];
 
   const handleProcess = async (event: React.FormEvent) => {
