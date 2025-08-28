@@ -24,6 +24,29 @@ const UpdateComponent = () => {
     { value: "QA Effort", label: "QA Effort", field_id: "customfield_13602" },
   ];
 
+  const handleProcess = async (event: React.FormEvent) => {
+  event.preventDefault();
+  const fileInput = document.querySelector<HTMLInputElement>("input[type=file]");
+  if (!fileInput?.files?.length) return;
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("jiraField", selectedField); // Pass the selected JIRA field
+
+  const res = await fetch("/api/update-jira", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (res.ok) {
+    alert("File processed successfully!");
+  } else {
+    const data = await res.json();
+    alert("Error: " + data.message);
+  }
+};
+
   return (
     <div>
       {/* Field Selection */}
@@ -76,7 +99,7 @@ const UpdateComponent = () => {
                          hover:file:bg-blue-700 file:transition-colors file:duration-200
                          focus:ring-2 focus:ring-blue-200 focus:border-blue-500
                          disabled:opacity-50 disabled:cursor-not-allowed
-                         disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
+                         disabled:file:bg-gray-500 disabled:file:cursor-not-allowed"
             />
           </div>
           
@@ -89,7 +112,8 @@ const UpdateComponent = () => {
         <div className="text-center mt-6">
           <button
             disabled={!selectedField}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:shadow-none"
+            onClick={handleProcess}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:shadow-none"
           >
             <div className="flex items-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
