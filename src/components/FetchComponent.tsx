@@ -4,7 +4,7 @@ import { Download, Filter, FileSpreadsheet } from 'lucide-react';
 export default function FetchComponent() {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
-    project: '',
+    type: '',
     status: '',
     assignee: '',
     labels: '',
@@ -27,6 +27,9 @@ export default function FetchComponent() {
     { value: 'description', label: 'Description' },
     { value: 'labels', label: 'Labels' },
     { value: 'fixVersions', label: 'Fix Versions' },
+    { value: 'T-shirt size', label: 'T-shirt size' },
+    { value: 'groomingDeadline', label: 'Grooming Deadline' },
+    { value: 'BAEffort', label: 'BA Effort' },
   ];
 
   const handleInputChange = (field: string, value: string) => {
@@ -111,6 +114,18 @@ export default function FetchComponent() {
           </div>
 
           <div className="grid gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder=""
+                value={filters.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
