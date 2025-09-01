@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import JiraClient from 'jira-client';
 
-// Type definitions matching the frontend
 interface ExportRequestBody {
   type?: string;
   status?: string;
@@ -24,7 +23,6 @@ interface JiraIssue {
     labels?: string[];
     fixVersions?: Array<{ name: string }>;
     issuetype?: { name: string };
-    // Custom fields
     'T-shirt size'?: any;
     groomingDeadline?: any;
     BAEffort?: any;
@@ -38,15 +36,14 @@ export async function POST(request: NextRequest) {
 
     const body: ExportRequestBody = await request.json();
     const { 
-      type,        // Changed from issueType to type to match frontend
+      type,       
       status, 
       labels, 
-      fixVersion,  // Changed from fixVersions to fixVersion to match frontend
+      fixVersion,  
       customJQL,
-      fields = ['summary', 'status', 'assignee', 'created', 'updated'] // Default fields matching frontend
+      fields = ['summary', 'status', 'assignee', 'created', 'updated'] 
     } = body;
 
-    // Jira setup
     const jira = new JiraClient({
       protocol: 'https',
       host: 'intra.jira.devops.css.gov.on.ca',
@@ -57,15 +54,13 @@ export async function POST(request: NextRequest) {
       strictSSL: false,
     });
 
-    // Build JQL query
     let jqlQuery = '';
     const conditions = [];
 
     if (customJQL) {
-      // If user provides custom JQL, use it directly
       jqlQuery = customJQL;
     } else {
-      // Build JQL from filters - using exact field names from frontend
+      // Fixed: Use proper JIRA field names for filtering
       if (type) conditions.push(`issuetype = "${type}"`);
       if (status) conditions.push(`status = "${status}"`);
       if (labels) conditions.push(`labels = "${labels}"`);
@@ -83,7 +78,6 @@ export async function POST(request: NextRequest) {
 
     console.log('Executing JQL query:', jqlQuery);
 
-    // Create fields array for JIRA API - need to include 'key' and map frontend field names
     const jiraFields = ['key']; // Always include key
     fields.forEach((field: string) => {
       switch (field) {
@@ -111,14 +105,17 @@ export async function POST(request: NextRequest) {
         case 'fixVersions':
           jiraFields.push('fixVersions');
           break;
+        case 'issuetype':
+          jiraFields.push('issuetype');
+          break;
         case 'T-shirt size':
-          jiraFields.push('T-shirt size'); // Custom field - may need customfield_xxxxx
+          jiraFields.push('customfield_10500');
           break;
         case 'groomingDeadline':
-          jiraFields.push('groomingDeadline'); // Custom field - may need customfield_xxxxx
+          jiraFields.push('customfield_12800');
           break;
         case 'BAEffort':
-          jiraFields.push('BAEffort'); // Custom field - may need customfield_xxxxx
+          jiraFields.push('customfield_14901'); 
           break;
         default:
           jiraFields.push(field);
@@ -145,7 +142,7 @@ export async function POST(request: NextRequest) {
     const excelData: (string | number)[][] = [];
     
     // Create header row using the exact field labels from frontend
-    const headers: string[] = [];
+    const headers: string[] = ['Issue Key']; // Always include the key
     fields.forEach((field: string) => {
       switch (field) {
         case 'summary':
@@ -172,8 +169,11 @@ export async function POST(request: NextRequest) {
         case 'fixVersions':
           headers.push('Fix Versions');
           break;
+        case 'issuetype':
+          headers.push('Issue Type');
+          break;
         case 'T-shirt size':
-          headers.push('T-shirt size');
+          headers.push('T-shirt Size');
           break;
         case 'groomingDeadline':
           headers.push('Grooming Deadline');
@@ -189,13 +189,14 @@ export async function POST(request: NextRequest) {
 
     // Add data rows
     searchResults.issues.forEach((issue: JiraIssue) => {
-      const row: (string | number)[] = [];
+      const row: (string | number)[] = [issue.key]; // Always include the key
       fields.forEach((field: string) => {
         switch (field) {
           case 'summary':
             row.push(issue.fields.summary || '');
             break;
           case 'status':
+            // Fixed: Extract name from status object
             row.push(issue.fields.status?.name || '');
             break;
           case 'assignee':
@@ -214,16 +215,26 @@ export async function POST(request: NextRequest) {
             row.push(issue.fields.labels ? issue.fields.labels.join(', ') : '');
             break;
           case 'fixVersions':
+            // Fixed: Extract names from fixVersions array
             row.push(issue.fields.fixVersions ? issue.fields.fixVersions.map((v) => v.name).join(', ') : '');
             break;
+          case 'issuetype':
+            // Fixed: Extract name from issuetype object
+            row.push(issue.fields.issuetype?.name || '');
+            break;
           case 'T-shirt size':
-            row.push(issue.fields['T-shirt size'] || '');
+            // Fixed: Handle custom field properly - may need to extract value property
+            const tShirtSize = issue.fields.customfield_10500;
+            row.push(tShirtSize && typeof tShirtSize === 'object' && tShirtSize.value ? tShirtSize.value : tShirtSize || '');
             break;
           case 'groomingDeadline':
-            row.push(issue.fields.groomingDeadline || '');
+            // Fixed: Handle date custom field
+            const groomingDate = issue.fields.customfield_12800;
+            row.push(groomingDate ? new Date(groomingDate).toLocaleDateString() : '');
             break;
           case 'BAEffort':
-            row.push(issue.fields.BAEffort || '');
+            // Fixed: Handle numeric custom field
+            row.push(issue.fields.customfield_14901 || '');
             break;
           default:
             // Handle any other custom fields
@@ -237,6 +248,15 @@ export async function POST(request: NextRequest) {
     const worksheet = XLSX.utils.aoa_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'JIRA Issues');
+
+    // Auto-size columns
+    const columnWidths = excelData[0].map((_, colIndex) => {
+      const maxLength = Math.max(
+        ...excelData.map(row => String(row[colIndex] || '').length)
+      );
+      return { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
+    });
+    worksheet['!cols'] = columnWidths;
 
     // Convert to buffer
     const excelBuffer = XLSX.write(workbook, { 
