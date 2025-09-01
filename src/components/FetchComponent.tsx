@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { Download, Filter, FileSpreadsheet } from 'lucide-react';
+import { toast } from "sonner";
 
 export default function FetchComponent() {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
-    assignee: '',
     labels: '',
     fixVersion: '',
-    issueType: '',
-    priority: '',
     customJQL: ''
   });
   
   const [selectedFields, setSelectedFields] = useState([
-    'key', 'summary', 'status', 'assignee', 'priority', 'created', 'updated'
+    'summary', 'status', 'assignee', 'created', 'updated'
   ]);
 
   const availableFields = [
@@ -49,7 +47,7 @@ export default function FetchComponent() {
 
   const handleExport = async () => {
     if (selectedFields.length === 0) {
-      alert('Please select at least one field to export');
+      toast.error("Please select at least one field to export")
       return;
     }
 
@@ -86,14 +84,14 @@ export default function FetchComponent() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         
-        alert('Export completed successfully!');
+        toast.success("Export completed successfully!");
       } else {
         const errorData = await response.json();
-        alert(`Export failed: ${errorData.message}`);
+        toast.error(`Export failed: ${errorData.message}`);
       }
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export failed. Check console for details.');
+      toast.error('Export failed. Check console for details.');
     } finally {
       setLoading(false);
     }

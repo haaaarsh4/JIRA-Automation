@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import JiraClient from 'jira-client';
 
-// Type definitions
+// Type definitions matching the frontend
 interface ExportRequestBody {
-  project?: string;
+  type?: string;
   status?: string;
-  assignee?: string;
   labels?: string;
   fixVersion?: string;
-  issueType?: string;
-  priority?: string;
   customJQL?: string;
   fields?: string[];
 }
@@ -21,14 +18,17 @@ interface JiraIssue {
     summary?: string;
     status?: { name: string };
     assignee?: { displayName: string };
-    priority?: { name: string };
     created?: string;
     updated?: string;
     description?: string;
     labels?: string[];
     fixVersions?: Array<{ name: string }>;
     issuetype?: { name: string };
-    [key: string]: any; // For custom fields
+    // Custom fields
+    'T-shirt size'?: any;
+    groomingDeadline?: any;
+    BAEffort?: any;
+    [key: string]: any;
   };
 }
 
@@ -38,15 +38,12 @@ export async function POST(request: NextRequest) {
 
     const body: ExportRequestBody = await request.json();
     const { 
-      project, 
+      type,        // Changed from issueType to type to match frontend
       status, 
-      assignee, 
       labels, 
-      fixVersion, 
-      issueType,
-      priority,
-      customJQL,  // For advanced users who want to write their own JQL
-      fields = ['key', 'summary', 'status', 'assignee', 'priority', 'created', 'updated'] // Default fields to export
+      fixVersion,  // Changed from fixVersions to fixVersion to match frontend
+      customJQL,
+      fields = ['summary', 'status', 'assignee', 'created', 'updated'] // Default fields matching frontend
     } = body;
 
     // Jira setup
@@ -68,14 +65,11 @@ export async function POST(request: NextRequest) {
       // If user provides custom JQL, use it directly
       jqlQuery = customJQL;
     } else {
-      // Build JQL from filters
-      if (project) conditions.push(`project = "${project}"`);
+      // Build JQL from filters - using exact field names from frontend
+      if (type) conditions.push(`issuetype = "${type}"`);
       if (status) conditions.push(`status = "${status}"`);
-      if (assignee) conditions.push(`assignee = "${assignee}"`);
       if (labels) conditions.push(`labels = "${labels}"`);
       if (fixVersion) conditions.push(`fixVersion = "${fixVersion}"`);
-      if (issueType) conditions.push(`issuetype = "${issueType}"`);
-      if (priority) conditions.push(`priority = "${priority}"`);
       
       jqlQuery = conditions.join(' AND ');
     }
@@ -89,11 +83,53 @@ export async function POST(request: NextRequest) {
 
     console.log('Executing JQL query:', jqlQuery);
 
+    // Create fields array for JIRA API - need to include 'key' and map frontend field names
+    const jiraFields = ['key']; // Always include key
+    fields.forEach((field: string) => {
+      switch (field) {
+        case 'summary':
+          jiraFields.push('summary');
+          break;
+        case 'status':
+          jiraFields.push('status');
+          break;
+        case 'assignee':
+          jiraFields.push('assignee');
+          break;
+        case 'created':
+          jiraFields.push('created');
+          break;
+        case 'updated':
+          jiraFields.push('updated');
+          break;
+        case 'description':
+          jiraFields.push('description');
+          break;
+        case 'labels':
+          jiraFields.push('labels');
+          break;
+        case 'fixVersions':
+          jiraFields.push('fixVersions');
+          break;
+        case 'T-shirt size':
+          jiraFields.push('T-shirt size'); // Custom field - may need customfield_xxxxx
+          break;
+        case 'groomingDeadline':
+          jiraFields.push('groomingDeadline'); // Custom field - may need customfield_xxxxx
+          break;
+        case 'BAEffort':
+          jiraFields.push('BAEffort'); // Custom field - may need customfield_xxxxx
+          break;
+        default:
+          jiraFields.push(field);
+      }
+    });
+
     // Search JIRA issues
     const searchResults = await jira.searchJira(jqlQuery, {
       startAt: 0,
-      maxResults: 1000, // Adjust as needed
-      fields: fields,
+      maxResults: 1000,
+      fields: jiraFields,
     });
 
     if (!searchResults.issues || searchResults.issues.length === 0) {
@@ -108,13 +144,10 @@ export async function POST(request: NextRequest) {
     // Prepare data for Excel
     const excelData: (string | number)[][] = [];
     
-    // Create header row
+    // Create header row using the exact field labels from frontend
     const headers: string[] = [];
     fields.forEach((field: string) => {
       switch (field) {
-        case 'key':
-          headers.push('Issue Key');
-          break;
         case 'summary':
           headers.push('Summary');
           break;
@@ -123,9 +156,6 @@ export async function POST(request: NextRequest) {
           break;
         case 'assignee':
           headers.push('Assignee');
-          break;
-        case 'priority':
-          headers.push('Priority');
           break;
         case 'created':
           headers.push('Created Date');
@@ -140,13 +170,19 @@ export async function POST(request: NextRequest) {
           headers.push('Labels');
           break;
         case 'fixVersions':
-          headers.push('Fix Version');
+          headers.push('Fix Versions');
           break;
-        case 'issuetype':
-          headers.push('Issue Type');
+        case 'T-shirt size':
+          headers.push('T-shirt size');
+          break;
+        case 'groomingDeadline':
+          headers.push('Grooming Deadline');
+          break;
+        case 'BAEffort':
+          headers.push('BA Effort');
           break;
         default:
-          headers.push(field); // For custom fields
+          headers.push(field);
       }
     });
     excelData.push(headers);
@@ -156,9 +192,6 @@ export async function POST(request: NextRequest) {
       const row: (string | number)[] = [];
       fields.forEach((field: string) => {
         switch (field) {
-          case 'key':
-            row.push(issue.key);
-            break;
           case 'summary':
             row.push(issue.fields.summary || '');
             break;
@@ -167,9 +200,6 @@ export async function POST(request: NextRequest) {
             break;
           case 'assignee':
             row.push(issue.fields.assignee?.displayName || 'Unassigned');
-            break;
-          case 'priority':
-            row.push(issue.fields.priority?.name || '');
             break;
           case 'created':
             row.push(issue.fields.created ? new Date(issue.fields.created).toLocaleDateString() : '');
@@ -186,11 +216,17 @@ export async function POST(request: NextRequest) {
           case 'fixVersions':
             row.push(issue.fields.fixVersions ? issue.fields.fixVersions.map((v) => v.name).join(', ') : '');
             break;
-          case 'issuetype':
-            row.push(issue.fields.issuetype?.name || '');
+          case 'T-shirt size':
+            row.push(issue.fields['T-shirt size'] || '');
+            break;
+          case 'groomingDeadline':
+            row.push(issue.fields.groomingDeadline || '');
+            break;
+          case 'BAEffort':
+            row.push(issue.fields.BAEffort || '');
             break;
           default:
-            // Handle custom fields
+            // Handle any other custom fields
             row.push(issue.fields[field] || '');
         }
       });
